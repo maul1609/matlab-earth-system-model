@@ -1,0 +1,34 @@
+Brief:
+	*Matlab Earth System Model (MESM)
+	*A global model based on the shallow water equations of motion. 
+	*Equations are implemented on a lat / lon grid, hence predictions at the poles are 
+	 not possible without further development.
+	*This model is designed as a learning tool, rather than for accurate predictions
+	 to understand relationships between different aspect of the earth-system.
+Running code:
+	*run the code by opening MATLAB and typing the following at the MATLAB prompt:
+	* >>shallow_water_sphere
+	* when the model has finished running edit the plot_shallow_water_sphere.m file to 
+	 decide which variable to plot (see plot1 variable). 
+	 Your MATLAB installation will need to have the m_map toolbox installed 
+	 (see https://www.eoas.ubc.ca/~rich/map.html). 
+	 If you use the Virtual Machine, provided for projects in SEES, you will not need to
+	 install m_map. 
+	 To start an example plot type:
+	* >>plot_shallow_water_sphere
+Using code:
+    *The code has been put together for student projects. Your supervisor will discuss
+     aspects of the model that might be of interest to your project, and how you might go
+     about investigating them.
+    *Please cite the original source of the code when using.
+Example projects (as of 2017-09-08):
+	*Compare dynamics between baroclinic and barotropic assumptions (via the Ripa system)
+	*Test and evaluation a simplified radiation scheme and the models response to GHGs.
+	*Implement bowen ratio and surface albedo data.
+	*Understand the interaction between orography and dynamics
+	*Test and implement cloud and precipitation schemes.
+	*If interested you could use the model to look at transport of pollutants 
+	(e.g. Fukushima, Icelandic Volcano)
+Contributing development:
+	* Contact the code owner to contribute ideas. 
+	
