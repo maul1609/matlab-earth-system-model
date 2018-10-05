@@ -1,5 +1,5 @@
 % an example plotting program with m_map
-plot1='temp';
+plot1='h';
 print1='no';
 
 figure('renderer','painters');%maxfigsize
@@ -17,11 +17,6 @@ for i=1:p
     m_proj('robinson','long',[-180 180],'lat',[-90 90]);
     hold off;
     switch plot1
-        case 'theta'
-            F1=th_save([91:180 1:90],:,i); 
-        case 'temp'
-            F1=th_save([91:180 1:90],:,i).* ...
-                (h_save([91:180 1:90],:,i).*rho*g./100000).^(R_a/c_p);
         case 'h'
             F1=h_save([91:180 1:90],:,i); 
         otherwise

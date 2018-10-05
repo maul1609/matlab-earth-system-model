@@ -1,5 +1,5 @@
-function [unew, vnew, h_new, PT_new, qt_new] = ...                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   function [u_new, v_new, h_new, PT_new] = ...
-   lax_wendroff_sphere_barotropic(dphi, dtheta, dt, g, u, v, h, H,Re, THETA, F, PT, qt)
+function [unew, vnew, h_new] = ...                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   function [u_new, v_new, h_new, PT_new] = ...
+   lax_wendroff_sphere_barotropic(dphi, dtheta, dt, g, u, v, h, H,Re, THETA, F)
 
 % This function performs one timestep of the Lax-Wendroff scheme
 % applied to the shallow water equations
@@ -30,50 +30,6 @@ h_mid_yt = 0.5.*(h(:,2:end)+h(:,1:end-1)) ...
   -(0.5.*dt./(0.5.*(dy1(:,2:end)+dy1(:,1:end-1)))).*(vh1(:,2:end)-vh1(:,1:end-1));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%POTENTIAL TEMPERATURE=PT
-hPT = h.*PT;
-uhPT = u.*hPT;
-vhPT = v.*hPT;
-v1hPT = v1.*hPT;
-vPT1 =v1.*PT;
-uPT=u.*PT;
-
-hPT_mid_xt = 0.5.*(hPT(2:end,:)+hPT(1:end-1,:)) ...
-  -(0.5.*dt./(0.5.*(dx(2:end,:)+dx(1:end-1,:)))).*(uhPT(2:end,:)-uhPT(1:end-1,:))... 
- ;% +0.125.*dt.*(F(2:end,:)+F(1:end-1,:)).*(vh(2:end,:)+vh(1:end-1,:)); 
-hPT_mid_yt = 0.5.*(hPT(:,2:end)+hPT(:,1:end-1)) ...
-  -(0.5.*dt./(0.5.*(dy1(:,2:end)+dy1(:,1:end-1)))).*(v1hPT(:,2:end)-v1hPT(:,1:end-1)) ...
- ;% +0.125.*dt.*(F(:,2:end)+F(:,1:end-1)).*(vh(:,2:end)+vh(:,1:end-1)); 
-
-
-PT_mid_xt = 0.5.*(PT(2:end,:)+PT(1:end-1,:)) ...
-  -(0.5.*dt./(0.5.*(dx(2:end,:)+dx(1:end-1,:)))).*(uPT(2:end,:)-uPT(1:end-1,:));
-PT_mid_yt = 0.5.*(PT(:,2:end)+PT(:,1:end-1)) ...
-  -(0.5.*dt./(0.5.*(dy1(:,2:end)+dy1(:,1:end-1)))).*(vPT1(:,2:end)-vPT1(:,1:end-1));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Cloud water Content=qt
-hqt = h.*qt;
-uhqt = u.*hqt;
-vhqt = v.*hqt;
-v1hqt = v1.*hqt;
-vqt1 =v1.*qt;
-uqt=u.*qt;
-
-hqt_mid_xt = 0.5.*(hqt(2:end,:)+hqt(1:end-1,:)) ...
-  -(0.5.*dt./(0.5.*(dx(2:end,:)+dx(1:end-1,:)))).*(uhqt(2:end,:)-uhqt(1:end-1,:))... 
- ;% +0.125.*dt.*(F(2:end,:)+F(1:end-1,:)).*(vh(2:end,:)+vh(1:end-1,:)); 
-hqt_mid_yt = 0.5.*(hqt(:,2:end)+hqt(:,1:end-1)) ...
-  -(0.5.*dt./(0.5.*(dy1(:,2:end)+dy1(:,1:end-1)))).*(v1hqt(:,2:end)-v1hqt(:,1:end-1)) ...
- ;% +0.125.*dt.*(F(:,2:end)+F(:,1:end-1)).*(vh(:,2:end)+vh(:,1:end-1)); 
-
-
-qt_mid_xt = 0.5.*(qt(2:end,:)+qt(1:end-1,:)) ...
-  -(0.5.*dt./(0.5.*(dx(2:end,:)+dx(1:end-1,:)))).*(uqt(2:end,:)-uqt(1:end-1,:));
-qt_mid_yt = 0.5.*(qt(:,2:end)+qt(:,1:end-1)) ...
-  -(0.5.*dt./(0.5.*(dy1(:,2:end)+dy1(:,1:end-1)))).*(vqt1(:,2:end)-vqt1(:,1:end-1));
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -119,38 +75,9 @@ h_new = h(2:end-1,2:end-1) ...
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-uhPT_mid_xt = (uh_mid_xt.*hPT_mid_xt)./h_mid_xt;
-vhPT_mid_yt = (vh_mid_yt.*hPT_mid_yt)./h_mid_yt;
-
-% uhPT_mid_xt = uh_mid_xt.*PT_mid_xt;
-% vhPT_mid_yt = vh_mid_yt.*PT_mid_yt;
-
-
-
-%hPT
-hPT_new = hPT(2:end-1,2:end-1) ...
-  - (dt./(0.5.*(dx(2:end-1,2:end-1)+dx(1:end-2,2:end-1)))).*(uhPT_mid_xt(2:end,2:end-1)-uhPT_mid_xt(1:end-1,2:end-1)) ...
-  - (dt./(0.5.*(dy1(2:end-1,2:end-1)+dy1(2:end-1,1:end-2)))).* ...
-  (vhPT_mid_yt(2:end-1,2:end).*c_mid_yt(2:end-1,2:end)-vhPT_mid_yt(2:end-1,1:end-1).*c_mid_yt(2:end-1,1:end-1));
-% h_new=h_new+dt.*h_tend.*0.5.*(h(2:end-1,2:end-1)+h_new);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-uhqt_mid_xt = (uh_mid_xt.*hqt_mid_xt)./h_mid_xt;
-vhqt_mid_yt = (vh_mid_yt.*hqt_mid_yt)./h_mid_yt;
-
-% uhPT_mid_xt = uh_mid_xt.*PT_mid_xt;
-% vhPT_mid_yt = vh_mid_yt.*PT_mid_yt;
-
-
-
-%hPT
-hqt_new = hqt(2:end-1,2:end-1) ...
-  - (dt./(0.5.*(dx(2:end-1,2:end-1)+dx(1:end-2,2:end-1)))).*(uhqt_mid_xt(2:end,2:end-1)-uhqt_mid_xt(1:end-1,2:end-1)) ...
-  - (dt./(0.5.*(dy1(2:end-1,2:end-1)+dy1(2:end-1,1:end-2)))).* ...
-  (vhqt_mid_yt(2:end-1,2:end).*c_mid_yt(2:end-1,2:end)-vhqt_mid_yt(2:end-1,1:end-1).*c_mid_yt(2:end-1,1:end-1));
-% h_new=h_new+dt.*h_tend.*0.5.*(h(2:end-1,2:end-1)+h_new);
 
 
 
@@ -193,5 +120,3 @@ vh_new = vh_new  -dt.*.5.*(F(2:end-1,2:end-1).*u(2:end-1,2:end-1) + ...
 % re-calculate u and v. and PT
 unew = uh_new./h_new;
 vnew = vh_new./h_new;
-PT_new = hPT_new./h_new;
-qt_new = hqt_new./h_new;
