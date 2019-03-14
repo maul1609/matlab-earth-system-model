@@ -14,26 +14,28 @@ FLAT_TOPO=1;
 
 add_random_height_noise=true;
 initially_geostrophic=true;
-viscous_dissipation=false;
+viscous_dissipation=true;
+smagorinksky=true;
+cvis=0.2;
 viscous_dissipation_days=20*365; %0.25;
-dissipate_h=true;
+dissipate_h=false;
 initial_winds=IDEALISED_JET; % set to IDEALISED_JET for a jet
 nudge=true; % nudge mean model height field to that observed
 restart=false;
 
 topo=FLAT_TOPO;
 
-vis=5e6; % turbulent dissipation coefficient
+vis=1e6; % turbulent dissipation coefficient
 
-dt_mins              = 0.5;   % Timestep (minutes)
+dt_mins              = 1.;   % Timestep (minutes)
 output_interval_mins = 60;    % Time between outputs (minutes)
-forecast_length_days = 10;     % Total simulation length (days)
+forecast_length_days = 20;     % Total simulation length (days)
 
 % constants for Earth
 g=10.44;       % gravity
 rho=.19;       % density [ in[kg/m^3] ]
 Re=5.4155760e7;     % radius of planet [m]
-f=2.*pi./((10.44).*3600); % radians per second - planet's rotation rate
+f=2.*pi./((10.55).*3600); % radians per second - planet's rotation rate
 
 
 scale_height=60e3; % scale height of earth's atmosphere (density and pressure fall by 1/e)
@@ -82,7 +84,7 @@ if restart == false
     switch initial_winds
         case IDEALISED_JET
             u(:,:)=normpdf(THETA, 77.*pi./180,1.*pi./180);
-            u(:,:)=100.*u(:,:)./max(u(1,:));
+            u(:,:)=60.*u(:,:)./max(u(1,:));
             v(:,:)=0.;
             max_wind = 2000;
             %%%%%%%
@@ -125,7 +127,9 @@ if restart == false
     % ADD SOME RANDOM NOISE TO HEIGHT FIELD++++++++++++++++++++++++++++++++
     if add_random_height_noise
         ind=find(180./pi.*THETA>74 & 180./pi.*THETA<80 );
-        height(ind) = height(ind) + 1000.*0.6e5.*rand(size(height(ind)))./height(ind);
+%         r=norminv(rand(size(ind)));
+        r=randn(size(ind));
+        height(ind) = height(ind) + 1000.*0.6e5.*r./height(ind);
     end
     %----------------------------------------------------------------------
 
@@ -237,26 +241,66 @@ for n = 1:nt
   vnew=vnew([2:end-1],:);
   h_new=h_new([2:end-1],:);
   
+  if nudge==true   %& (n-1).*dt<viscous_dissipation_days.*86400
+      unew(:,:)=unew(:,:)+(repmat(u_nudge(2:end-1),[nx 1])- ...
+          (unew(:,:)))./6.e5.*dt;
+  end
+  
   
   % apply viscosity:
-  if viscous_dissipation==true & (n-1).*dt<viscous_dissipation_days.*86400
+  if viscous_dissipation==true %& (n-1).*dt<viscous_dissipation_days.*86400
       % gradient of wind:
-      u1=[unew(end,:);unew;unew(1,:)]; u1=[u1(:,1),u1,u1(:,end)];
-      [uy,ux]=gradient(u1);     
-      ux=ux./[dx(end,:); dx(1:end,1:end); dx(1,:)];uy=uy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
+      u1=[unew(end,:);unew;unew(1,:)]; 
+      u1(:,:)=(u1(:,:)+[u(end,2:end-1);u(:,2:end-1);u(1,2:end-1)])./2;
+      u1=[u1(:,1),u1,u1(:,end)];
+%       [uy,ux]=gradient(u1);     
+%       ux=ux./[dx(end,:); dx(1:end,1:end); dx(1,:)];uy=uy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
       
-      v1=[vnew(end,:);vnew;vnew(1,:)]; v1=[v1(:,1),v1,v1(:,end)];
-      [vy,vx]=gradient(v1);
-      vx=vx./[dx(end,:);dx(1:end,1:end);dx(1,:)];vy=vy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
+      v1=[vnew(end,:);vnew;vnew(1,:)]; 
+      v1(:,:)=(v1(:,:)+[v(end,2:end-1);v(:,2:end-1);v(1,2:end-1)])./2;
+      v1=[v1(:,1),v1,v1(:,end)];
+%       [vy,vx]=gradient(v1);
+%       vx=vx./[dx(end,:);dx(1:end,1:end);dx(1,:)];vy=vy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
       
 
-      % divergence of grad:
-      del2a=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],uy,ux);
-      del2b=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],vy,vx);
+%       % divergence of grad:
+%       % del^2 of u
+%       del2a=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],uy,ux);
+%       % del^2 of v
+%       del2b=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],vy,vx);
+
+      del2a = 1./(Re.^2.*cos(THETA(:,2:end-1))).* ...
+          (cos(THETA(:,2:end-1)).*(u1(2:end-1,3:end)-u1(2:end-1,2:end-1))./dtheta - ... 
+           (cos(THETA(:,1:end-2)).*(u1(2:end-1,2:end-1)-u1(2:end-1,1:end-2))./dtheta )./dtheta) + ...
+           1./(Re.^2.*cos(THETA(:,2:end-1)).^2).* ...
+          ((u1(3:end,2:end-1)-u1(2:end-1,2:end-1))./dphi - ... 
+           ((u1(2:end-1,2:end-1)-u1(1:end-2,2:end-1))./dphi )./dphi);
+       
+      del2b = 1./(Re.^2.*cos(THETA(:,2:end-1))).* ...
+          (cos(THETA(:,2:end-1)).*(v1(2:end-1,3:end)-v1(2:end-1,2:end-1))./dtheta - ... 
+           (cos(THETA(:,1:end-2)).*(v1(2:end-1,2:end-1)-v1(2:end-1,1:end-2))./dtheta )./dtheta) + ...
+           1./(Re.^2.*cos(THETA(:,2:end-1)).^2).* ...
+          ((v1(3:end,2:end-1)-v1(2:end-1,2:end-1))./dphi - ... 
+           ((v1(2:end-1,2:end-1)-v1(1:end-2,2:end-1))./dphi )./dphi);
 
       % add viscous term to wind fields:
-      unew=unew+dt.*vis.*del2a(2:end-1,2:end-1);
-      vnew=vnew+dt.*vis.*del2b(2:end-1,2:end-1);
+      if(smagorinksky==true)
+          vis2=cvis.^2.*Re.*(Re).*cos(THETA(:,2:end-1)).*dphi.*dtheta.* ...
+              sqrt(  ((u1(3:end,2:end-1)-u1(1:end-2,2:end-1)) ./(Re.*cos(THETA(:,2:end-1)).*2.*dphi)).^2 + ...
+                    ((v1(2:end-1,3:end)-v1(2:end-1,1:end-2)) ./(Re.*2.*dtheta)).^2 + ...
+                    0.5.*(...
+                    ((u1(2:end-1,3:end)-u1(2:end-1,1:end-2)) ./(Re.*2.*dtheta)) + ...
+                    ((v1(3:end,2:end-1)-v1(1:end-2,2:end-1)) ./(Re.*cos(THETA(:,2:end-1)).*2.*dphi)) ...
+                    ).^2 ...
+                );
+%           unew=unew+dt.*vis2.*del2a(2:end-1,2:end-1);
+%           vnew=vnew+dt.*vis2.*del2b(2:end-1,2:end-1);
+          unew=unew+dt.*vis2.*del2a;
+          vnew=vnew+dt.*vis2.*del2b;
+      else
+          unew=unew+dt.*vis.*del2a;
+          vnew=vnew+dt.*vis.*del2b;
+      end
       
       if dissipate_h == true
           % gradient of h:
@@ -275,30 +319,13 @@ for n = 1:nt
   
   
   
-  
-  % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  % set the boundary conditions
-  % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  if nudge==true & (n-1).*dt<viscous_dissipation_days.*86400
-      unew(:,:)=unew(:,:)+(u_nudge(:,2:end-1)-unew(:,:) )./6e5.*dt;
-  end
+  % set new values
   u(:,2:end-1) = unew(:,[1:end]);
   v(:,2:end-1) = vnew(:,[1:end]);
-  
-   
-  % add nudge terms
-%   if nudge==true & (n-1).*dt<viscous_dissipation_days.*86400
-%       h_new(:,:)=h_new(:,:)+(h_nudge(:,2:end-1)-h_new(:,:) ).*1e-4.*dt;
-%   end
-  
- 
-  h(:,2:end-1) = h_new(:,:);
-%   h(:,[1 end])=h(:,[2 end-1]);
-  
-  %%%%%%%
-  
-  
+  h(:,2:end-1) = h_new(:,:);  
   %%%%%%%%%%%%%%%%%%%%%%% 
+  
+  
      
 
 
