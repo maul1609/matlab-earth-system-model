@@ -12,16 +12,18 @@ EARTH_TOPO=2;
 
 % USER SETTINGS++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 interactive_theta=true;
-radiation=true;
+radiation=false;
 cloud_diabatic=false; % include the latent heating due to 
                       % condensation in dynamics
 
 
 add_random_height_noise=false;
 initially_geostrophic=true;
-viscous_dissipation=false;
+viscous_dissipation=true;
+smagorinksky=true;
+cvis=0.2;
 viscous_dissipation_days=0.25;
-dissipate_h=true;
+dissipate_h=false;
 initial_winds=EARTH_WINDS; % set to IDEALISED_JET for a jet
 nudge=true; % nudge mean model height field to that observed
 restart=false;
@@ -372,26 +374,65 @@ for n = 1:nt
   
   qt_new(find(qt_new(:)<1e-6))=1e-6;
   
+  % add nudge terms
+  if nudge==true & (n-1).*dt<viscous_dissipation_days.*86400
+      h_new(:,:)=h_new(:,:)+(h_nudge(:,2:end-1)-h_new(:,:) ).*1e-4.*dt;
+  end
   
   % apply viscosity:
   if viscous_dissipation==true & (n-1).*dt<viscous_dissipation_days.*86400
       % gradient of wind:
-      u1=[unew(end,:);unew;unew(1,:)]; u1=[u1(:,1),u1,u1(:,end)];
-      [uy,ux]=gradient(u1);     
-      ux=ux./[dx(end,:); dx(1:end,1:end); dx(1,:)];uy=uy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
+      u1=[unew(end,:);unew;unew(1,:)]; 
+      u1(:,:)=(u1(:,:)+[u(end,2:end-1);u(:,2:end-1);u(1,2:end-1)])./2;
+      u1=[u1(:,1),u1,u1(:,end)];
+%       [uy,ux]=gradient(u1);     
+%       ux=ux./[dx(end,:); dx(1:end,1:end); dx(1,:)];uy=uy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
       
-      v1=[vnew(end,:);vnew;vnew(1,:)]; v1=[v1(:,1),v1,v1(:,end)];
-      [vy,vx]=gradient(v1);
-      vx=vx./[dx(end,:);dx(1:end,1:end);dx(1,:)];vy=vy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
+      v1=[vnew(end,:);vnew;vnew(1,:)]; 
+      v1(:,:)=(v1(:,:)+[v(end,2:end-1);v(:,2:end-1);v(1,2:end-1)])./2;
+      v1=[v1(:,1),v1,v1(:,end)];
+%       [vy,vx]=gradient(v1);
+%       vx=vx./[dx(end,:);dx(1:end,1:end);dx(1,:)];vy=vy./[dy(end,:);dy(1:end,1:end);dy(1,:)];
       
 
-      % divergence of grad:
-      del2a=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],uy,ux);
-      del2b=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],vy,vx);
+%       % divergence of grad:
+%       % del^2 of u
+%       del2a=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],uy,ux);
+%       % del^2 of v
+%       del2b=divergence([y(end,:);y(1:end,1:end);y(1,:)],[x(end,:); x(1:end,1:end); x(1,:)],vy,vx);
+
+      del2a = 1./(Re.^2.*cos(THETA(:,2:end-1))).* ...
+          (cos(THETA(:,2:end-1)).*(u1(2:end-1,3:end)-u1(2:end-1,2:end-1))./dtheta - ... 
+           (cos(THETA(:,1:end-2)).*(u1(2:end-1,2:end-1)-u1(2:end-1,1:end-2))./dtheta )./dtheta) + ...
+           1./(Re.^2.*cos(THETA(:,2:end-1)).^2).* ...
+          ((u1(3:end,2:end-1)-u1(2:end-1,2:end-1))./dphi - ... 
+           ((u1(2:end-1,2:end-1)-u1(1:end-2,2:end-1))./dphi )./dphi);
+       
+      del2b = 1./(Re.^2.*cos(THETA(:,2:end-1))).* ...
+          (cos(THETA(:,2:end-1)).*(v1(2:end-1,3:end)-v1(2:end-1,2:end-1))./dtheta - ... 
+           (cos(THETA(:,1:end-2)).*(v1(2:end-1,2:end-1)-v1(2:end-1,1:end-2))./dtheta )./dtheta) + ...
+           1./(Re.^2.*cos(THETA(:,2:end-1)).^2).* ...
+          ((v1(3:end,2:end-1)-v1(2:end-1,2:end-1))./dphi - ... 
+           ((v1(2:end-1,2:end-1)-v1(1:end-2,2:end-1))./dphi )./dphi);
 
       % add viscous term to wind fields:
-      unew=unew+dt.*vis.*del2a(2:end-1,2:end-1);
-      vnew=vnew+dt.*vis.*del2b(2:end-1,2:end-1);
+      if(smagorinksky==true)
+          vis2=cvis.^2.*Re.*(Re).*cos(THETA(:,2:end-1)).*dphi.*dtheta.* ...
+              sqrt(  ((u1(3:end,2:end-1)-u1(1:end-2,2:end-1)) ./(Re.*cos(THETA(:,2:end-1)).*2.*dphi)).^2 + ...
+                    ((v1(2:end-1,3:end)-v1(2:end-1,1:end-2)) ./(Re.*2.*dtheta)).^2 + ...
+                    0.5.*(...
+                    ((u1(2:end-1,3:end)-u1(2:end-1,1:end-2)) ./(Re.*2.*dtheta)) + ...
+                    ((v1(3:end,2:end-1)-v1(1:end-2,2:end-1)) ./(Re.*cos(THETA(:,2:end-1)).*2.*dphi)) ...
+                    ).^2 ...
+                );
+%           unew=unew+dt.*vis2.*del2a(2:end-1,2:end-1);
+%           vnew=vnew+dt.*vis2.*del2b(2:end-1,2:end-1);
+          unew=unew+dt.*vis2.*del2a;
+          vnew=vnew+dt.*vis2.*del2b;
+      else
+          unew=unew+dt.*vis.*del2a;
+          vnew=vnew+dt.*vis.*del2b;
+      end
       
       if dissipate_h == true
           % gradient of h:
@@ -418,10 +459,6 @@ for n = 1:nt
   v(:,2:end-1) = vnew(:,[1:end]);
   
    
-  % add nudge terms
-  if nudge==true & (n-1).*dt<viscous_dissipation_days.*86400
-      h_new(:,:)=h_new(:,:)+(h_nudge(:,2:end-1)-h_new(:,:) ).*1e-4.*dt;
-  end
   
   PT(:,2:end-1) = PT_new(:,[1:end]);
   qt(:,2:end-1) = qt_new(:,[1:end]);
