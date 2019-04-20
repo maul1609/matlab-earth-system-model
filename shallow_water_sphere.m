@@ -75,6 +75,7 @@ nt = fix(forecast_length/dt)+1; % Number of timesteps
 timesteps_between_outputs = fix(output_interval/dt);
 noutput = ceil(nt/timesteps_between_outputs); % Number of output frames       
 
+u_jet=60;   % set the jet speed for this run
 
 if restart == false
     % Initialize the wind to rest
@@ -84,7 +85,7 @@ if restart == false
     switch initial_winds
         case IDEALISED_JET
             u(:,:)=normpdf(THETA, 77.*pi./180,1.*pi./180);
-            u(:,:)=60.*u(:,:)./max(u(1,:));
+            u(:,:)=u_jet.*u(:,:)./max(u(1,:));
             v(:,:)=0.;
             max_wind = 2000;
             %%%%%%%
